@@ -19,6 +19,9 @@ data segment para 'data'
 	paddle_width dw 05h
 	paddle_height dw 1fh
 	paddle_velocity dw 05h
+	paddle_point db 00h,00h
+	game_over_sign db 'game over$',0
+	rekey db 'press space key to restart$',0
 	
 data ends 
 code segment para 'code'
@@ -38,6 +41,7 @@ code segment para 'code'
 		call drawb
 		call move_paddle
 		call drawp
+		call draw_ui
 		jmp check_time
 	ret
 	main endp
@@ -49,11 +53,51 @@ code segment para 'code'
 		je reset_x 
 		mov ax,window_width
 		cmp xpos,ax
-		je reset_x
+		je reset_x2
 		jmp move
-		reset_x:
+		reset_x2:
+			inc [paddle_point]
 			call reset_ball_position
+			cmp [paddle_point],05h
+			je game_over
 			ret
+		reset_x:
+			inc [paddle_point+1]
+			call reset_ball_position
+			cmp [paddle_point+1],05h
+			je game_over
+			ret
+		
+		game_over:
+			repi:
+				mov ah,02h
+				mov bh,00h
+				mov dl,80h
+				mov dh,02h
+				int 10h
+				
+				mov ah,09h
+				lea dx,game_over_sign
+				int 21h
+				
+				mov ah,02h
+				mov bh,00h
+				mov dl,00h
+				mov dh,05h
+				int 10h
+				
+				mov ah,09h
+				lea dx,rekey
+				int 21h
+				
+				mov ah,01h
+				int 16h
+				mov ah,00h
+				int 16h
+				cmp al,20h
+				jne repi
+			mov [paddle_point],00h
+			mov [paddle_point+1],00h
 		move:
 		mov ax,ybvel
 		add ypos,ax
@@ -259,5 +303,33 @@ code segment para 'code'
 	
 		ret
 	move_paddle endp
+	
+	draw_ui proc near
+	mov ah,02h
+	mov bh,00h
+	mov dl,0eh
+	mov dh,02h
+	int 10h
+	
+	mov bl,[paddle_point]
+	add bl,30h
+	mov ah,06h
+	mov dl,bl
+	int 21h
+	
+	mov ah,02h
+	mov bh,00h
+	mov dl,8fh
+	mov dh,02h
+	int 10h
+	
+	mov ah,06h
+	mov bl,[paddle_point+1]
+	add bl,30h
+	mov dl,bl
+	int 21h
+	
+	ret
+	draw_ui endp
 code ends
 end
